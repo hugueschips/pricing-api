@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "pricing"
+version = "0.1.0"
+description = "Transport pricing API"
+authors = ["Daniel Durrenberger <lhommelepluscl@ssedumon.de>"]
+readme = "README.md"
+
+[tool.poetry.scripts]
+start = "pricing.main:start"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pandas = "^2.0.0"
+loguru = "^0.7.0"
+fastapi = "^0.95.1"
+uvicorn = "^0.22.0"
+python-dotenv = "^1.0.0"
+requests = "^2.31.0"
+firebase = "^4.0.1"
+firebase-admin = "^6.5.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+flake8 = "^6.0.0"
+isort = "^5.10.1"
+autoflake = "^1.4"
+
+
+[tool.poetry.group.jupyter.dependencies]
+ipykernel = "^6.22.0"
+plotly = "^5.14.1"
+jupytext = "^1.16.1"
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
+
+[tool.flake8]
+max-line-length = 88
+max-complexity = 5
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests"
+]

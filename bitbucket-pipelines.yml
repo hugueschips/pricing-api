@@ -1,0 +1,63 @@
+image: python:3.13
+
+clone:
+  depth: full
+
+options:
+  docker: true
+  size: 2x
+
+pipelines:
+  default:
+    - step:
+        name: Test and Lint
+        script:
+          - export PIP_CACHE_DIR="/opt/cache/pip"
+          - apt-get update && apt-get upgrade -y && apt-get install -y libpq-dev
+          - apt install openjdk-17-jdk openjdk-17-jre -y
+          - pip install poetry
+          - poetry env use python3.12
+          - poetry install
+          - make lint
+          - pipe: sonarsource/sonarcloud-scan:2.0.0
+          - pipe: sonarsource/sonarcloud-quality-gate:0.1.6
+  tags:
+    #######
+    # "Default" DigitalOcean Deployment
+    #######
+    release-*:
+      - step:
+          name: Build Docker image on release
+          script:
+            - docker login -u ${DIGITALOCEAN_API_TOKEN} -p ${DIGITALOCEAN_API_TOKEN} registry.digitalocean.com
+            - docker build -t registry.digitalocean.com/motion-s/pricing:${BITBUCKET_TAG} --build-arg RELEASE_VERSION=$BITBUCKET_TAG .
+            - docker push registry.digitalocean.com/motion-s/pricing:${BITBUCKET_TAG}
+      - step:
+          name: Deploy Test
+          deployment: test
+          script:
+            - sed -i "s|%FIREBASE_API_KEY%|$FIREBASE_WEB_API_KEY|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_PROJECT_ID%|$FIREBASE_PROJECT_ID|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_PRIVATE_KEY_ID%|$FIREBASE_PRIVATE_KEY_ID|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_PRIVATE_KEY%|$FIREBASE_PRIVATE_KEY|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_CLIENT_EMAIL%|$FIREBASE_CLIENT_EMAIL|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_CLIENT_ID%|$FIREBASE_CLIENT_ID|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_AUTH_URI%|$FIREBASE_AUTH_URI|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_TOKEN_URI%|$FIREBASE_TOKEN_URI|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_AUTH_PROVIDER_X509_CERT_URL%|$FIREBASE_AUTH_PROVIDER_X509_CERT_URL|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%FIREBASE_WEB_API_KEY%|$FIREBASE_WEB_API_KEY|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%CONTEXTUALIZER_URL%|$CONTEXTUALIZER_URL|g" ./.kube/default/base/config.properties
+            - sed -i "s|%CONTEXTUALIZER_USERNAME%|$CONTEXTUALIZER_USERNAME|g" ./.kube/default/base/config.properties
+            - sed -i "s|%CONTEXTUALIZER_PASSWORD%|$CONTEXTUALIZER_PASSWORD|g" ./.kube/default/base/config.properties
+            - sed -i "s|%MONGO_URI%|$MONGO_URI|g" ./.kube/default/testing/config.properties
+            - sed -i "s|%BASIC_AUTHS_STR%|$BASIC_AUTHS_STR|g" ./.kube/default/testing/config.properties
+
+            - sed -i "s|{{image}}|registry.digitalocean.com/motion-s/pricing:$BITBUCKET_TAG|g" .kube/default/base/pricing-deployment.yaml
+            - pipe: atlassian/kubectl-run:3.3.1
+              variables:
+                KUBE_CONFIG: $KUBECONFIG
+                KUBECTL_COMMAND: "apply"
+                RESOURCE_PATH: ".kube/default/testing/"
+                KUBECTL_APPLY_ARGS: "-k"
+                KUBECTL_ARGS:
+                  - "--context=do-fra1-pricing-test-k8s"

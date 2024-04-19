@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pricing:latest
+    container_name: pricing
+    restart: always
+    ports:
+      - 81:80
+    command: poetry run uvicorn pricing.main:app --host 0.0.0.0 --port 80 --reload
+    env_file:
+      - .env
+    environment:
+      - SERVER_PORT=80
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
