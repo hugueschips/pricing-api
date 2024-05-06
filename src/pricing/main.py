@@ -1,13 +1,13 @@
 import uvicorn
 from fastapi import FastAPI
 
-from pricing.api.v0 import firebase
-from pricing.api.v0 import quote as v0
+from pricing.api.v0 import basic_auth, firebase, quote
 
 app = FastAPI(description="Embrace the power of simplicity!")
 
+app.include_router(basic_auth.router)
 app.include_router(firebase.router)
-app.include_router(v0.router)
+app.include_router(quote.router)
 
 
 def start() -> None:
